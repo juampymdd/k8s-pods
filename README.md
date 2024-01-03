@@ -1,5 +1,25 @@
 # ```POD``` - Kubernetes
 
+## Indice
+- [Que es un ```POD```?](#que-es-un-pod)
+- [Que caracteristicas me da un ```POD```](#que-caracteristicas-me-da-un-pod)
+- [Como se define un ```POD```](#como-se-define-un-pod)
+  - [Metodo imperativo](#metodo-imperativo)
+  - [Metodo declarativo](#metodo-declarativo)
+- [Como se ejecuta un ```POD```](#como-se-ejecuta-un-pod)
+- [Como se listan los ```POD```](#como-se-listan-los-pod)
+- [Comando ```describe```](#comando-describe)
+- [Lanzar comandos dentro de un ```POD```](#lanzar-comandos-dentro-de-un-pod)
+  - [Ejemplo: Pod en apache](#ejemplo-pod-en-apache)
+- [Como eliminar un ```POD```](#como-eliminar-un-pod)
+- [Kubectl Proxy](#kubectl-proxy)
+- [Acceder a los pods desde afuera](#acceder-a-los-pods-desde-afuera)
+  - [Exponer servicios](#exponer-servicios)
+  - [Port Forwarding](#port-forwarding)
+- [POD declarativos](#pod-declarativos)
+    - [Crear un pod ```create```](#crear-un-pod-create)
+
+
 ## Que es un ```POD```?
 
 Se puede considerar un ```POD``` como un envoltorio que tiene una serie de propiedades comunes con las que gobierna sus contenedores. Es decir, un ```POD``` es un grupo de uno o mas contenedores que comparten almacenamiento y una unica direccion IP.
@@ -133,7 +153,7 @@ kubectl proxy
 ```
 > Para acceder a un pod se usa ```http://localhost:8001/api/v1/namespaces/default/pods/<nombre_pod>```
 
-## Acceder a los pods
+## Acceder a los pods desde afuera
     
 ### Exponer servicios
 ```bash
@@ -154,3 +174,37 @@ Se utiliza para acceder a un pod desde el exterior indicando el puerto local y e
 kubectl port-forward <nombre_pod> <puerto_local>:<puerto_pod>
 ```
 
+## POD declarativos
+Para crear un pod con un fichero de tipo ```manifest``` se usa el siguiente formato:
+
+```yaml
+# nombre_archivo.yaml -> nginx.yaml
+
+apiVersion: v1 # version de la api
+kind: Pod # tipo de recurso
+metadata: # metadatos del recurso
+  name: nginx # nombre del recurso
+  labels: # etiquetas del recurso
+    name: nginx
+    zone: prod
+    version: v1
+spec: # especificaciones del recurso
+  containers: # contenedores del recurso
+  - name: nginx # nombre del contenedor
+    image: nginx:latest # imagen del contenedor
+    resources: # recursos del contenedor
+      limits: # limites del contenedor
+        memory: "128Mi" # memoria maxima
+        cpu: "500m" # cpu maxima
+    ports: # puertos del contenedor
+      - containerPort: 80 # puerto del contenedor
+        protocol: TCP # protocolo del puerto
+```
+
+### Crear un pod ```create```
+
+```bash
+kubectl create -f <nombre_archivo>.yaml
+```
+
+    
