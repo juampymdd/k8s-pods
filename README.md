@@ -19,6 +19,7 @@
 - [POD declarativos](#pod-declarativos)
     - [Crear un pod ```create```](#crear-un-pod-create)
 - [Obtener toda la configuracion de un pod](#obtener-toda-la-configuracion-de-un-pod)
+- [Borrar un ```POD```](#borrar-un-pod)
 
 
 ## Que es un ```POD```?
@@ -230,6 +231,20 @@ kubectl get pod nginx -o yaml > nginx-conf.yaml
 kubectl get pod nginx -o json
 # en un archivo
 kubectl get pod nginx -o json > nginx-conf.json
+```
 
+## Borrar un ```POD```
 
+```bash
+# Borrar un pod
+kubectl delete pod <nombre_pod>
+
+# periodo de gracia (5 segundos y forzar el borrado)
+kubectl delete pod <nombre_pod> --grace-period=5 --force
+
+# Borrar ahora y no esperar a que se termine de ejecutar
+kubectl delete pod <nombre_pod> --now
+
+# Borrar todos los pods
+kubectl delete pod --all
 ```
