@@ -223,9 +223,13 @@ kubectl get pod <nombre_pod> -o yaml
 
 #yaml
 kubectl get pod nginx -o yaml
+# en un archivo
+kubectl get pod nginx -o yaml > nginx-conf.yaml
 
 #json
 kubectl get pod nginx -o json
+# en un archivo
+kubectl get pod nginx -o json > nginx-conf.json
 
 
 ```
