@@ -18,6 +18,7 @@
   - [Port Forwarding](#port-forwarding)
 - [POD declarativos](#pod-declarativos)
     - [Crear un pod ```create```](#crear-un-pod-create)
+- [Obtener toda la configuracion de un pod](#obtener-toda-la-configuracion-de-un-pod)
 
 
 ## Que es un ```POD```?
@@ -211,4 +212,20 @@ kubectl create -f nginx.yaml
 
 #Creo un servicio para el pod
 kubectl expose pod nginx --port=80 --name=nginx-svc --type=LoadBalancer
+```
+
+## Obtener toda la configuracion de un pod
+
+```bash
+kubectl get pod <nombre_pod> -o yaml
+
+# Ejemplo
+
+#yaml
+kubectl get pod nginx -o yaml
+
+#json
+kubectl get pod nginx -o json
+
+
 ```
