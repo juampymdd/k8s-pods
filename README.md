@@ -205,6 +205,10 @@ spec: # especificaciones del recurso
 
 ```bash
 kubectl create -f <nombre_archivo>.yaml
-```
 
-    
+# Ejemplo
+kubectl create -f nginx.yaml
+
+#Creo un servicio para el pod
+kubectl expose pod nginx --port=80 --name=nginx-svc --type=LoadBalancer
+```
