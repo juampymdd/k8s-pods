@@ -22,6 +22,7 @@
 - [Borrar un ```POD```](#borrar-un-pod)
 - [Pod con multiples contenedores](#pod-con-multiples-contenedores)
 - [Utilizar apply para actualizar un pod](#utilizar-apply-para-actualizar-un-pod)
+- [Politicas de reinicio](#politicas-de-reinicio)
 
 
 ## Que es un ```POD```?
