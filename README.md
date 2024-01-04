@@ -322,8 +322,8 @@ kubectl logs multi --all-containers
 ```
 ## Politicas de reinicio
 
-- ```Never```: Nunca se reinicia el pod (por defecto)
-- ```Always```: Siempre se reinicia el pod
+- ```Always```: Siempre se reinicia el pod (por defecto)
+- ```Never```: Nunca se reinicia el pod 
 - ```OnFailure```: Se reinicia el pod si falla
 
 ```yaml
@@ -339,4 +339,53 @@ spec:
     ports:
     - containerPort: <puerto>
 ```
+## Prueba de politicas de reinicio
+
+```bash
+# Creo un pod con politica de reinicio Always (tomcat)
+kubectl apply -f .\restart-always.yaml 
+
+# Ingreso al bash del pod
+kubectl exec -it tomcat -- bash
+```
+```
+# veo los procesos del pod
+ps -ef 
+```
+
+| UID  | PID | PPID | C | STIME | TTY   | TIME       | CMD                                                                                                    |
+|------|-----|------|---|-------|-------|------------|--------------------------------------------------------------------------------------------------------|
+| root | 1   | 0    | 2 | 00:45 | ?     | 00:00:02   | /opt/java/openjdk/bin/java -Djava.util.logging.config.file=/usr/local/tomcat/conf/logging.properties -Djava.util.logg |
+| root | 38  | 0    | 0 | 00:47 | pts/0 | 00:00:00   | bash                                                                                                   |
+| root | 46  | 38   | 0 | 00:47 | pts/0 | 00:00:00   | ps -ef 
+
+```bash
+# Detengo el servicio de tomcat
+catalina.sh stop
+------------------------------------------------
+Using CATALINA_BASE:   /usr/local/tomcat
+Using CATALINA_HOME:   /usr/local/tomcat
+Using CATALINA_TMPDIR: /usr/local/tomcat/temp
+Using JRE_HOME:        /opt/java/openjdk
+Using CLASSPATH:       /usr/local/tomcat/bin/bootstrap.jar:/usr/local/tomcat/bin/tomcat-juli.jar
+Using CATALINA_OPTS:
+command terminated with exit code 137
+```
+
+```bash
+# Describo el pod
+kubectl describe pod tomcat
+
+# Veo que el Restart Count es 1
+Restart Count:  1
+
+# Veo que el pod se reinicio
+kubectl get pod tomcat                                             
+
+# Muestra lo siguiente                 
+NAME     READY   STATUS    RESTARTS        AGE                                                                                                                       
+tomcat   1/1     Running   1 (4m18s ago)   13m               
+```
+
+
 
