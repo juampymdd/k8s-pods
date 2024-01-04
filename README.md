@@ -20,6 +20,8 @@
     - [Crear un pod ```create```](#crear-un-pod-create)
 - [Obtener toda la configuracion de un pod](#obtener-toda-la-configuracion-de-un-pod)
 - [Borrar un ```POD```](#borrar-un-pod)
+- [Pod con multiples contenedores](#pod-con-multiples-contenedores)
+- [Utilizar apply para actualizar un pod](#utilizar-apply-para-actualizar-un-pod)
 
 
 ## Que es un ```POD```?
@@ -239,8 +241,11 @@ kubectl get pod nginx -o json > nginx-conf.json
 # Borrar un pod
 kubectl delete pod <nombre_pod>
 
-# periodo de gracia (5 segundos y forzar el borrado)
-kubectl delete pod <nombre_pod> --grace-period=5 --force
+# periodo de gracia (5 segundos )
+kubectl delete pod <nombre_pod> --grace-period=5
+
+# Borrar forzado
+kubectl delete pod <nombre_pod> --force
 
 # Borrar ahora y no esperar a que se termine de ejecutar
 kubectl delete pod <nombre_pod> --now
@@ -248,3 +253,89 @@ kubectl delete pod <nombre_pod> --now
 # Borrar todos los pods
 kubectl delete pod --all
 ```
+
+## Pod con multiples contenedores
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: <nombre_pod>
+spec:
+    containers:
+    - name: <nombre_contenedor1>
+        image: <imagen1>
+        ports:
+        - containerPort: <puerto1>
+    - name: <nombre_contenedor2>
+        image: <imagen2>
+        ports:
+        - containerPort: <puerto2>
+```
+
+> Los contenedores se ejecutan en el mismo nodo, por lo que comparten la misma IP y el mismo volumen.
+
+> Los contenedores se ejecutan en el mismo ciclo de vida, es decir, si se cae el pod se caen todos los contenedores.
+
+> Los contenedores se ejecutan en el mismo espacio de nombres, por lo que pueden acceder a los mismos recursos.
+
+> Los contenedores se ejecutan en el mismo volumen, por lo que comparten la misma informacion.
+
+### Ejemplo: Pod con multiples contenedores
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multi
+spec:
+  containers:
+  - name: web
+    image: nginx
+    ports:
+    - containerPort: 80  
+  - name: frontal
+    image: alpine
+    command: ["watch", "-n5", "ping",  "localhost"]
+```
+## Utilizar apply para actualizar un pod
+> diferencia entre ```apply``` y ```create``` es que ```apply``` se usa para actualizar un pod, mientras que ```create``` se usa para crear un pod. Si modifico el archivo y utilizo ```create``` me va a dar error, mientras que si utilizo ```apply``` me va a actualizar el pod.
+
+```bash
+kubectl apply -f <nombre_archivo>.yaml
+
+# Ejemplo
+kubectl apply -f multi.yaml
+```
+> Para ver los logs de un contenedor en particular se usa ```kubectl logs <nombre_pod> -c <nombre_contenedor>```
+
+```bash
+kubectl logs multi -c web # logs del contenedor web
+kubectl logs multi -c frontal # logs del contenedor frontal
+
+# -f para ver los logs en tiempo real
+kubectl logs -f multi -c frontal
+
+# Para ver los logs de todos los contenedores
+kubectl logs multi --all-containers
+```
+## Politicas de reinicio
+
+- ```Never```: Nunca se reinicia el pod (por defecto)
+- ```Always```: Siempre se reinicia el pod
+- ```OnFailure```: Se reinicia el pod si falla
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: <nombre_pod>
+spec:
+  restartPolicy: <politica_reinicio>
+  containers:
+  - name: <nombre_contenedor>
+    image: <imagen>
+    ports:
+    - containerPort: <puerto>
+```
+
