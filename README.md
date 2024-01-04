@@ -382,9 +382,9 @@ Restart Count:  1
 # Veo que el pod se reinicio
 kubectl get pod tomcat                                             
 
-# Muestra lo siguiente                 
-NAME     READY   STATUS    RESTARTS        AGE                                                                                                                       
-tomcat   1/1     Running   1 (4m18s ago)   13m               
+# Muestra lo siguiente
+NAME     READY   STATUS    RESTARTS        AGE
+tomcat   1/1     Running   1 (4m18s ago)   13m
 ```
 
 
