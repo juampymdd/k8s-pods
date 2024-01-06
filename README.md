@@ -341,6 +341,7 @@ spec:
 ```
 ## Prueba de politicas de reinicio
 
+### Restart Always
 ```bash
 # Creo un pod con politica de reinicio Always (tomcat)
 kubectl apply -f .\restart-always.yaml 
@@ -387,5 +388,41 @@ NAME     READY   STATUS    RESTARTS        AGE
 tomcat   1/1     Running   1 (4m18s ago)   13m
 ```
 
+### Restart OnFailure
 
+```bash
+# borro el pod anterior
+kubectl delete pod tomcat
+
+# Creo un pod con politica de reinicio OnFailure (tomcat)
+kubectl apply -f .\restart-onfailure.yaml
+
+# veo los logs del pod
+kubectl logs on-failure
+>Ejemplo de pod falllado
+```
+
+```bash
+# Describo el pod
+kubectl describe pod on-failure
+
+Events:
+  Type     Reason     Age                     From               Message
+  ----     ------     ----                    ----               -------
+  Normal   Scheduled  9m33s                   default-scheduler  Successfully assigned default/on-failure to docker-desktop
+  Normal   Pulled     9m29s                   kubelet            Successfully pulled image "busybox" in 4.029s (4.029s including waiting)
+  Normal   Pulled     9m27s                   kubelet            Successfully pulled image "busybox" in 1.789s (1.789s including waiting)
+  Normal   Pulled     9m11s                   kubelet            Successfully pulled image "busybox" in 1.741s (1.741s including waiting)
+  Normal   Created    8m41s (x4 over 9m29s)   kubelet            Created container on-failure
+  Normal   Started    8m41s (x4 over 9m29s)   kubelet            Started container on-failure
+  Normal   Pulled     8m41s                   kubelet            Successfully pulled image "busybox" in 1.958s (1.958s including waiting)
+  Normal   Pulling    7m55s (x5 over 9m33s)   kubelet            Pulling image "busybox"
+  Warning  BackOff    4m29s (x25 over 9m27s)  kubelet            Back-off restarting failed container on-failure in 
+                                                                 pod on-failure_default(7f820439-2ca4-420b-9f53-bad7e39240f6)
+
+# Veo que el Restart Count es 16
+kubectl get pods                                                                                                                                                                                                                                                                                                          
+NAME         READY   STATUS             RESTARTS         AGE                                                                                                                     
+on-failure   0/1     CrashLoopBackOff   16 (3m36s ago)   61m
+```
 
