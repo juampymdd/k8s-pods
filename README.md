@@ -402,7 +402,6 @@ kubectl logs on-failure
 ```
 
 
-
 ```bash
 # Describo el pod
 kubectl describe pod on-failure
@@ -427,3 +426,61 @@ NAME         READY   STATUS             RESTARTS         AGE
 on-failure   0/1     CrashLoopBackOff   16 (3m36s ago)   61m
 ```
 
+### Restart Never
+
+```bash
+# borro el pod anterior
+kubectl delete pod on-failure
+
+# Creo un pod con politica de reinicio Never
+kubectl apply -f .\restart-never.yaml
+
+# veo los logs del pod
+kubectl logs never
+Ejemplo de pod fallado
+
+# Reviso el estado del pod
+kubectl get pods
+NAME    READY   STATUS    RESTARTS   AGE                                  
+never   0/1     Error     0         73s                       
+```           
+
+## Etiquetas
+
+Las etiquetas son pares clave-valor que se pueden agregar a los recursos de Kubernetes, como pods, para identificarlos y organizarlos. Las etiquetas se pueden usar para seleccionar y filtrar recursos cuando se realiza una operación en un grupo de recursos. Por ejemplo, puede usar etiquetas para seleccionar todos los pods con una etiqueta de entorno de producción o todos los pods con una etiqueta de entorno de prueba.
+
+### Agregar etiquetas a un pod
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tomcat
+  labels:
+    estado: "desarrollo" # etiqueta
+spec:
+  containers:
+   - name: tomcat
+     image: tomcat
+```
+```bash
+# Creo el pod
+kubectl apply -f ./pods/tomcat.yaml
+
+# Veo los pods con sus etiquetas
+kubectl get pods --show-labels
+
+NAME         READY   STATUS    RESTARTS         AGE    LABELS
+never        0/1     Error     0                133m app=app1
+on-failure   0/1     Error     29 (5m16s ago)   123m   app=app1
+tomcat       1/1     Running   0                4m7s   estado=desarrollo # muestra la etiqueta estado
+
+
+# Veo los pods con la etiqueta -L y el nombre de la etiqueta para que la muestre en una nueva columna
+kubectl get pods --show-labels -L estado                                                                                                                                                                                                                                                                                  
+NAME         READY   STATUS             RESTARTS        AGE     ESTADO       LABELS
+never        0/1     Error              0               133m                 app=app1
+on-failure   0/1     CrashLoopBackOff   28 (5m3s ago)   123m                 app=app1
+tomcat       1/1     Running            0               3m54s   desarrollo   estado=desarrollo # muestra la etiqueta estado
+```
+                                              
