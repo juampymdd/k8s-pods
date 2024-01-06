@@ -449,6 +449,8 @@ never   0/1     Error     0         73s
 
 Las etiquetas son pares clave-valor que se pueden agregar a los recursos de Kubernetes, como pods, para identificarlos y organizarlos. Las etiquetas se pueden usar para seleccionar y filtrar recursos cuando se realiza una operación en un grupo de recursos. Por ejemplo, puede usar etiquetas para seleccionar todos los pods con una etiqueta de entorno de producción o todos los pods con una etiqueta de entorno de prueba.
 
+> Pueden empezar con letras, numeros y guiones, pueden tener hasta 63 caracteres y no admiten espacios en blanco y otros caracteres raros.
+
 ### Agregar etiquetas a un pod
 
 ```yaml
@@ -463,6 +465,8 @@ spec:
    - name: tomcat
      image: tomcat
 ```
+
+### Ver etiquetas de un pod
 ```bash
 # Creo el pod
 kubectl apply -f ./pods/tomcat.yaml
@@ -477,10 +481,39 @@ tomcat       1/1     Running   0                4m7s   estado=desarrollo # muest
 
 
 # Veo los pods con la etiqueta -L y el nombre de la etiqueta para que la muestre en una nueva columna
-kubectl get pods --show-labels -L estado                                                                                                                                                                                                                                                                                  
+kubectl get pods --show-labels -L estado
+
 NAME         READY   STATUS             RESTARTS        AGE     ESTADO       LABELS
 never        0/1     Error              0               133m                 app=app1
 on-failure   0/1     CrashLoopBackOff   28 (5m3s ago)   123m                 app=app1
 tomcat       1/1     Running            0               3m54s   desarrollo   estado=desarrollo # muestra la etiqueta estado
 ```
                                               
+### Agregar etiquetas a un pod existente
+
+```bash
+# Agrego la etiqueta
+kubectl label pod <nombre_pod> <nombre_etiqueta>=<valor_etiqueta>
+
+# Ejemplo
+kubectl label pod tomcat estado=produccion --overwrite # --overwrite para sobreescribir la etiqueta
+kubectl label pod tomcat responsable=Juan
+
+
+# Veo los pods con sus etiquetas
+kubectl get pods --show-labels
+---------------------------------------------------------------------------------------------------
+NAME         READY   STATUS             RESTARTS         AGE    LABELS
+never        0/1     Error              0                142m   app=app1
+on-failure   0/1     CrashLoopBackOff   30 (4m15s ago)   133m   app=app1
+tomcat       1/1     Running            0                13m    estado=produccion,responsable=Juan
+
+# Veo los pods con la etiqueta -L y el nombre de la etiqueta para que la muestre en una nueva columna
+kubectl get pods --show-labels -L estado,responsable
+---------------------------------------------------------------------------------------------------
+NAME         READY   STATUS             RESTARTS       AGE    ESTADO       RESPONSABLE   LABELS
+never        0/1     Error              0              145m                              app=app1
+on-failure   0/1     CrashLoopBackOff   31 (90s ago)   135m                              app=app1
+tomcat       1/1     Running            0              15m    produccion   Juan          estado=produccion,responsable=Juan
+
+```
