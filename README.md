@@ -21,7 +21,7 @@
 - [Obtener toda la configuracion de un pod](#obtener-toda-la-configuracion-de-un-pod)
 - [Borrar un ```POD```](#borrar-un-pod)
 - [Pod con multiples contenedores](#pod-con-multiples-contenedores)
-- [Utilizar apply para actualizar un pod](#utilizar-apply-para-actualizar-un-pod)
+- [Utilizar ```apply``` para actualizar un pod](#utilizar-apply-para-actualizar-un-pod)
 - [Politicas de reinicio](#politicas-de-reinicio)
 - [Prueba de politicas de reinicio](#prueba-de-politicas-de-reinicio)
   - [Restart Always](#restart-always)
@@ -30,13 +30,13 @@
 - [Etiquetas](#etiquetas)
   - [Agregar etiquetas a un pod](#agregar-etiquetas-a-un-pod)
   - [Ver etiquetas de un pod](#ver-etiquetas-de-un-pod)
-  - [Agregar etiquetas a un pod existente en modo imperativo](#agregar-etiquetas-a-un-pod-existente-en-modo-imperativo)
-  - [Eliminar etiquetas a un pod existente en modo imperativo (-)](#eliminar-etiquetas-a-un-pod-existente-en-modo-imperativo--)
-  - [Agregar etiquetas a un pod existente en modo declarativo](#agregar-etiquetas-a-un-pod-existente-en-modo-declarativo)
+  - [Agregar etiquetas a un pod existente en modo imperativo ```(-L)```](#agregar-etiquetas-a-un-pod-existente-en-modo-imperativo)
+  - [Eliminar etiquetas a un pod existente en modo imperativo ```(-)```](#eliminar-etiquetas-a-un-pod-existente-en-modo-imperativo--)
+  - [Agregar etiquetas a un pod existente en modo declarativo ](#agregar-etiquetas-a-un-pod-existente-en-modo-declarativo)
   - [Eliminar etiquetas a un pod existente en modo declarativo](#eliminar-etiquetas-a-un-pod-existente-en-modo-declarativo)
 - [Selectores](#selectores)
-  - [Selecionar pods por etiqueta](#selecionar-pods-por-etiqueta)
-  - [Selecionar pods por etiqueta con operadores](#selecionar-pods-por-etiqueta-con-operadores)
+  - [Listar pods por etiqueta (```-l```)](#selecionar-pods-por-etiqueta)
+  - [Listar pods por etiqueta con operadores](#selecionar-pods-por-etiqueta-con-operadores)
 
 ## Que es un ```POD```?
 
@@ -87,7 +87,8 @@ spec:
         - containerPort: <puerto>
 ```
 
-## Como se ejecuta un ```POD```
+## Comando ```apply```
+> Sirve para aplicar un archivo de tipo ```manifest``` (yaml o json)
 
 ```bash
 kubectl apply -f <nombre_archivo>.yaml
@@ -312,7 +313,7 @@ spec:
     image: alpine
     command: ["watch", "-n5", "ping",  "localhost"]
 ```
-## Utilizar apply para actualizar un pod
+## Utilizar ```apply``` para actualizar un pod
 > diferencia entre ```apply``` y ```create``` es que ```apply``` se usa para actualizar un pod, mientras que ```create``` se usa para crear un pod. Si modifico el archivo y utilizo ```create``` me va a dar error, mientras que si utilizo ```apply``` me va a actualizar el pod.
 
 ```bash
