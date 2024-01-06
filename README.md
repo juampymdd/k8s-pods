@@ -23,7 +23,20 @@
 - [Pod con multiples contenedores](#pod-con-multiples-contenedores)
 - [Utilizar apply para actualizar un pod](#utilizar-apply-para-actualizar-un-pod)
 - [Politicas de reinicio](#politicas-de-reinicio)
-
+- [Prueba de politicas de reinicio](#prueba-de-politicas-de-reinicio)
+  - [Restart Always](#restart-always)
+  - [Restart OnFailure](#restart-onfailure)
+  - [Restart Never](#restart-never)
+- [Etiquetas](#etiquetas)
+  - [Agregar etiquetas a un pod](#agregar-etiquetas-a-un-pod)
+  - [Ver etiquetas de un pod](#ver-etiquetas-de-un-pod)
+  - [Agregar etiquetas a un pod existente en modo imperativo](#agregar-etiquetas-a-un-pod-existente-en-modo-imperativo)
+  - [Eliminar etiquetas a un pod existente en modo imperativo (-)](#eliminar-etiquetas-a-un-pod-existente-en-modo-imperativo--)
+  - [Agregar etiquetas a un pod existente en modo declarativo](#agregar-etiquetas-a-un-pod-existente-en-modo-declarativo)
+  - [Eliminar etiquetas a un pod existente en modo declarativo](#eliminar-etiquetas-a-un-pod-existente-en-modo-declarativo)
+- [Selectores](#selectores)
+  - [Selecionar pods por etiqueta](#selecionar-pods-por-etiqueta)
+  - [Selecionar pods por etiqueta con operadores](#selecionar-pods-por-etiqueta-con-operadores)
 
 ## Que es un ```POD```?
 
@@ -489,15 +502,16 @@ on-failure   0/1     CrashLoopBackOff   28 (5m3s ago)   123m                 app
 tomcat       1/1     Running            0               3m54s   desarrollo   estado=desarrollo # muestra la etiqueta estado
 ```
                                               
-### Agregar etiquetas a un pod existente
+### Agregar etiquetas a un pod existente en modo imperativo
 
 ```bash
 # Agrego la etiqueta
 kubectl label pod <nombre_pod> <nombre_etiqueta>=<valor_etiqueta>
-
+# Sobreescribir etiqueta existente (--overwrite)
+kubectl label pod <nombre_pod> <nombre_etiqueta>=<valor_etiqueta> --overwrite
 # Ejemplo
-kubectl label pod tomcat estado=produccion --overwrite # --overwrite para sobreescribir la etiqueta
 kubectl label pod tomcat responsable=Juan
+kubectl label pod tomcat estado=produccion --overwrite # --overwrite para sobreescribir la etiqueta
 
 
 # Veo los pods con sus etiquetas
@@ -515,5 +529,165 @@ NAME         READY   STATUS             RESTARTS       AGE    ESTADO       RESPO
 never        0/1     Error              0              145m                              app=app1
 on-failure   0/1     CrashLoopBackOff   31 (90s ago)   135m                              app=app1
 tomcat       1/1     Running            0              15m    produccion   Juan          estado=produccion,responsable=Juan
+
+```
+
+### Eliminar etiquetas a un pod existente en modo imperativo (-)
+
+```bash
+# Elimino la etiqueta
+kubectl label pod <nombre_pod> <nombre_etiqueta>-
+
+# Ejemplo
+kubectl label pod tomcat responsable- # elimina la etiqueta responsable
+kubectl label pod tomcat estado- # elimina la etiqueta estado
+```	
+
+> Es mejor usar el modo declarativo para agregar etiquetas
+
+### Agregar etiquetas a un pod existente en modo declarativo
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tomcat
+  labels:
+    estado: "desarrollo" # etiqueta
+    responsable: "Juan" # etiqueta agregada
+spec:
+  containers:
+   - name: tomcat
+     image: tomcat
+```
+```bash
+# Aplico el archivo
+kubectl apply -f ./pods/tomcat.yaml
+
+# Veo los pods con sus etiquetas
+kubectl get pods --show-labels
+```
+### Eliminar etiquetas a un pod existente en modo declarativo
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tomcat
+  labels:
+    estado: "desarrollo" # etiqueta
+spec:
+  containers:
+   - name: tomcat
+     image: tomcat
+```
+
+```bash
+# Aplico el archivo
+kubectl apply -f ./pods/tomcat.yaml
+
+# Veo los pods con sus etiquetas
+kubectl get pods --show-labels
+
+```
+
+## Selectores
+
+Los selectores son una forma de filtrar los recursos de Kubernetes. Los selectores se pueden usar para seleccionar y filtrar recursos cuando se realiza una operación en un grupo de recursos. Por ejemplo, puede usar selectores para seleccionar todos los pods con una etiqueta de entorno de producción o todos los pods con una etiqueta de entorno de prueba.
+
+> utilizaremos los ficheros de la carpeta labels
+
+1. Inicializamos todos los pods
+```bash
+# Ingresamos al directorio labels
+cd labels
+
+# Inicializamos todos los pods
+kubectl apply -f .
+
+# Listamos los pods con sus etiquetas
+kubectl get pods --show-labels
+
+NAME      READY   STATUS    RESTARTS   AGE   LABELS
+tomcat    1/1     Running   0          60s   estado=desarrollo,responsable=juan
+tomcat1   1/1     Running   0          60s   estado=desarrollo,responsable=juan
+tomcat2   1/1     Running   0          60s   estado=testing,responsable=pedro
+tomcat3   1/1     Running   0          60s   estado=produccion,responsable=pedro
+
+```
+
+### Selecionar pods por etiqueta
+
+
+
+- ```= o ==``` son lo mismo y significa es igual a ```estado=desarrollo```
+- ```!=``` es distinto a ```estado!=desarrollo```
+- ```in``` es igual a ```estado in (desarrollo,testing)``` 
+- ```notin``` es distinto a ```estado notin (desarrollo,testing)```
+- ```!``` es distinto a ```!estado```
+- ```,``` se usa para separar etiquetas ```estado=desarrollo,responsable=juan``` como si fuera un ```AND```
+
+```bash
+# Seleccionamos los pods con estado=desarrollo
+kubectl get pods --show-labels -l estado=desarrollo
+NAME      READY   STATUS    RESTARTS   AGE     LABELS
+tomcat    1/1     Running   0          6m31s   estado=desarrollo,responsable=juan
+tomcat1   1/1     Running   0          6m31s   estado=desarrollo,responsable=juan    
+
+# Seleccionamos los pods con estado=testing
+kubectl get pods --show-labels -l estado=testing
+
+NAME      READY   STATUS    RESTARTS   AGE     LABELS
+tomcat2   1/1     Running   0          7m17s   estado=testing,responsable=pedro
+
+# Seleccionamos los pods con estado=produccion
+kubectl get pods --show-labels -l estado=produccion
+
+NAME      READY   STATUS    RESTARTS   AGE     LABELS
+tomcat3   1/1     Running   0          7m52s   estado=produccion,responsable=pedro
+```
+
+### Selecionar pods por etiqueta con operadores
+
+```bash
+# Seleccionamos los pods con estado=desarrollo o testing
+kubectl get pods --show-labels -l 'estado in (desarrollo,testing)'
+
+NAME      READY   STATUS    RESTARTS   AGE   LABELS
+tomcat    1/1     Running   0          13m   estado=desarrollo,responsable=juan
+tomcat1   1/1     Running   0          13m   estado=desarrollo,responsable=juan
+tomcat2   1/1     Running   0          13m   estado=testing,responsable=pedro
+
+# Seleccionamos los pods con estado=desarrollo o testing
+kubectl get pods --show-labels -l 'estado notin (desarrollo,testing)'
+
+NAME      READY   STATUS    RESTARTS   AGE   LABELS
+tomcat3   1/1     Running   0          14m   estado=produccion,responsable=pedro
+
+# Seleccionamos los pods con estado=desarrollo y responsable=juan
+kubectl get pods --show-labels -l 'estado=desarrollo,responsable=juan'
+
+NAME     READY   STATUS    RESTARTS   AGE   LABELS
+tomcat    1/1     Running   0         15m   estado=desarrollo,responsable=juan
+tomcat1   1/1     Running   0         15m   estado=desarrollo,responsable=juan
+
+# Seleccionamos los pods con estado=desarrollo y responsable=pedro
+kubectl get pods --show-labels -l 'estado=desarrollo,responsable=pedro'
+
+No resources found in default namespace.
+
+# Seleccionamos donde el responsable no sea juan
+
+kubectl get pods --show-labels -l 'responsable!=juan'
+
+NAME      READY   STATUS    RESTARTS   AGE   LABELS
+tomcat2   1/1     Running   0          16m   estado=testing,responsable=pedro
+tomcat3   1/1     Running   0          16m   estado=produccion,responsable=pedro
+
+# Borro todos los pods que están en desarrollo
+kubectl delete pods -l 'estado=desarrollo'
+
+pod "tomcat" deleted                                         
+pod "tomcat1" deleted 
 
 ```
