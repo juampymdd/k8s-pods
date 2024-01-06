@@ -399,8 +399,9 @@ kubectl apply -f .\restart-onfailure.yaml
 
 # veo los logs del pod
 kubectl logs on-failure
->Ejemplo de pod falllado
 ```
+
+
 
 ```bash
 # Describo el pod
