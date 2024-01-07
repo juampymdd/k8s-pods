@@ -692,3 +692,260 @@ pod "tomcat" deleted
 pod "tomcat1" deleted 
 
 ```
+
+## Anotaciones
+
+Las anotaciones son pares clave-valor que se pueden agregar a los recursos de Kubernetes, como pods, para identificarlos y organizarlos. Las anotaciones se pueden usar para seleccionar y filtrar recursos cuando se realiza una operación en un grupo de recursos. Por ejemplo, puede usar anotaciones para seleccionar todos los pods con una etiqueta de entorno de producción o todos los pods con una etiqueta de entorno de prueba.
+
+> Estas anotaciones nos permiten darle algún sentido o alguna descripción a nuestros pods.
+
+### Agregar anotaciones a un pod (declarativo)
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tomcat
+  labels:
+    estado: "desarrollo" # etiqueta
+  annotations:
+    doc: "Se debe compilar con gcc" # anotacion
+    adjunto: "ejemplo de anotación" # anotacion
+spec:
+  containers:
+   - name: tomcat
+     image: tomcat
+```
+
+```bash
+# Aplico el archivo
+kubectl apply -f ./pods/tomcat.yaml
+
+kubectl get pods tomcat4
+
+NAME      READY   STATUS    RESTARTS   AGE
+tomcat4   1/1     Running   0          52s 
+
+# Veo las anotaciones
+kubectl describe pod tomcat4
+
+# Busco la seccion de annotations
+kubectl get pod tomcat4 -o 'jsonpath={.metadata.annotations}'
+
+{"adjunto":"ejemplo de anotacion","doc":"Se debe compilar con gcc","kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"annotations\":{\"adjunto\":\"ejemplo de anotacion\",\"doc\":\"Se debe compilar con gcc\"},\"labels\":{\"estado\":\"produccion\",\"responsable\":\"pedro\"},\"name\":\"tomcat4\",\"namespace\":\"default\"},\"spec\":{\"containers\":[{\"image\":\"tomcat\",\"name\":\"tomcat\"}]}}\n"}
+
+```
+
+# Deployments
+
+El deployment es un componente que va a orquestar el despliegue de los pods, es decir, va a ser el encargado de crear los pods, actualizarlos, eliminarlos. Manejando las replicas, las recuperaciones ante catastrofes, escalar, configurar recursos, etc.
+
+## Workloads y controllers
+
+- Workloads: El workload se utiliza para poder correr contenedores en Kubernetes y se encargan de correr los procesos.
+Nuestro workload mas básico son los ```pods``` pero estos, no tienen caracteristicas que necesitamos en un cluster como por ejemplo la cantidad de replicas, el escalamiento, la recuperacion ante catastrofes, la capacidad de hacer updates y rollbacks de manera sencilla. Para poder tener estas caracteristicas en nuestro cluster necesitamos tener otros objetos.
+
+  - ```Deployment```: Son los componentes que van a envolver a los pods y van a ser los encargados de crearlos, actualizarlos, eliminarlos, etc.
+  - ```ReplicaSet```: Son los encargados de mantener la cantidad de replicas que nosotros definimos en el deployment. (en algunas documentaciones tambien se pueden mencionar como replication controller)
+  - ```StatefulSet```: Gestiona el despliegue y el escalado y garantiza el orden y la unicidad de los pods.
+  - ```DaemonSet```: Son los encargados de asegurar que todos los nodos del cluster tengan una copia del pod que nosotros definimos.
+  - ```Job```: Son los encargados de ejecutar un pod y asegurarse que se ejecute una sola vez.
+  - ```CronJob```: Son los encargados de ejecutar un pod en un horario especifico.
+
+  > A grandes rasgos los ```workloads``` terminan siendo envolturas que van a tener uno o mas pods y van a permitir que se ejecuten de una determinada manera.
+
+- Controllers: Los controllers son los encargados de controlar que los workloads se ejecuten de la manera que nosotros definimos.
+
+> Los pods no escalan, no se recuperan ante caidas, y ademas cuando quiero actualizar la aplicación o hacer un rollback no puedo hacerlo de manera sencilla. Por lo que necesito un objeto que me permita hacer todo esto, y ese objeto es el ```deployment``` por lo que no se trabaja de forma directa con ```pods```sino que utilizaremos directamente ```deploymets```.
+
+## Que es un ```Deployment```?
+
+Un ```deployment``` es un objeto que nos permite definir como se van a ejecutar los pods, es decir, nos permite definir la cantidad de replicas, la estrategia de actualizacion, la recuperacion ante catastrofes, etc.
+
+> Los ```deployments``` son objetos de tipo ```workload``` y son los encargados de crear los pods, actualizarlos, eliminarlos, etc.
+
+## Como creo un ```Deployment``` de modo imperativo?
+
+```bash
+kubectl create deployment <nombre_deployment> --image=<imagen>
+
+# Ejemplo
+kubectl create deployment apache --image=httpd
+```
+
+## Como se define un ```Deployment```?
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: <nombre_deployment>
+spec: # estado ideal de mi deployment
+  replicas: <cantidad_replicas>
+  selector:
+    matchLabels:
+      <nombre_etiqueta>: <valor_etiqueta>
+  template:
+    metadata:
+      labels:
+        <nombre_etiqueta>: <valor_etiqueta>
+    spec:
+      containers:
+      - name: <nombre_contenedor>
+        image: <imagen>
+        ports:
+        - containerPort: <puerto>
+```
+> Los ```deployments``` son la unidad de trabajo mas habitual y mas adecuada para desplegar aplicaciones en Kubernetes.
+
+> Cuando yo creo un deployment, el deployment va a crear un ```replicaset``` y el ```replicaset``` va a crear los pods.
+
+
+## Como se ejecuta un ```Deployment```?
+
+```yaml
+# deploy_nginx.yaml
+
+apiVersion: apps/v1 # i se Usa apps/v1beta2 para versiones anteriores a 1.9.0
+kind: Deployment
+metadata:
+  name: nginx-d
+  labels:
+    app: nginx
+spec:
+  selector:   #permite seleccionar un conjunto de objetos que cumplan las condicione
+    matchLabels:
+      app: nginx
+  replicas: 2 # indica al controlador que ejecute 2 pods
+  template:   # Plantilla que define los containers
+    metadata:
+      labels:
+        app: nginx
+    spec:    # Especifica las caracteristicas de los containers es igual a la especificacion de un pod
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+```
+
+```bash
+# Para crear el deployment desde el archivo
+# con apply se almacena en el etcd y rapidamente se crea el replicaset y los pods
+kubectl apply -f <nombre_archivo>.yaml
+
+# Ejemplo
+
+# Me muevo al directorio deployments
+cd deployments
+
+
+# Creo el deployment
+kubectl apply -f deploy_nginx.yaml
+```
+
+## Como se listan los ```Deployments```?
+
+```bash
+# Para ver los deployments
+kubectl get deployments
+
+# Para ver mas informacion
+kubectl get deployments -o wide
+
+# Para ver los pods de un deployment
+kubectl get pods -l app=nginx
+
+NAME                     READY   STATUS    RESTARTS   AGE
+nginx-d-9d6cbcc65-h8l7h   1/1     Running   0         5m23s
+nginx-d-9d6cbcc65-r2lhk   1/1     Running   0         5m23s
+
+
+# Para pods, deployments y replicasets en una sola linea
+kubectl get deploy,pods,rs -l app=nginx
+
+NAME                      READY   UP-TO-DATE   AVAILABLE   AGE       
+deployment.apps/nginx-d   2/2     2            2           13m
+
+NAME                          READY   STATUS    RESTARTS   AGE
+pod/nginx-d-9d6cbcc65-h8l7h   1/1     Running   0          13m
+pod/nginx-d-9d6cbcc65-r2lhk   1/1     Running   0          13m
+
+NAME                                DESIRED   CURRENT   READY   AGE
+replicaset.apps/nginx-d-9d6cbcc65   2         2         2       13m
+```
+
+### Comando ```edit```
+
+
+> El comando edit nos permite configurar y actualizar un deployment de manera dinamica sin necesidad de tener el fichero original y volverlo a aplicar.
+
+```bash
+# Para editar un deployment
+kubectl edit deployment <nombre_deployment>
+
+# Ejemplo
+kubectl edit deployment nginx-d
+
+# Se abre el archivo en el editor de texto
+
+```
+> Cuando cierro el fichero de texto el deployment se actualiza si tiene cambios
+
+### Comando ```scale```
+
+> El comando scale nos permite escalar un deployment de manera dinamica sin necesidad de tener el fichero original y volverlo a aplicar.
+
+
+```bash
+# Para escalar un deployment
+kubectl scale deployment <nombre_deployment> --replicas=<cantidad_replicas>
+
+# Ejemplo
+kubectl scale deployment nginx-d --replicas=3
+
+# Para ver los pods de un deployment
+kubectl get deploy,pods,rs -l app=nginx
+
+NAME                      READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/nginx-d   3/3     3            3           27m
+
+NAME                          READY   STATUS    RESTARTS   AGE
+pod/nginx-d-9d6cbcc65-h8l7h   1/1     Running   0          27m
+pod/nginx-d-9d6cbcc65-pbscn   1/1     Running   0          5m45s
+pod/nginx-d-9d6cbcc65-r2lhk   1/1     Running   0          27m
+
+NAME                                DESIRED   CURRENT   READY   AGE
+replicaset.apps/nginx-d-9d6cbcc65   3         3         3       27m
+
+# Escalo un deployment a 10 replicas filtrando por etiqueta
+kubectl scale deployment -l app=nginx --replicas=10
+
+# Para ver los pods de un deployment
+kubectl get deploy,pods,rs -l app=nginx
+
+# Muestra lo siguiente
+kubectl get deploy,pods,rs -l app=nginx
+
+NAME                      READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/nginx-d   10/10   10           10          4h12m       
+NAME                          READY   STATUS    RESTARTS   AGE
+pod/nginx-d-9d6cbcc65-5jdq7   1/1     Running   0          23s
+pod/nginx-d-9d6cbcc65-9zlg6   1/1     Running   0          23s
+pod/nginx-d-9d6cbcc65-dqgtb   1/1     Running   0          23s
+pod/nginx-d-9d6cbcc65-dspv7   1/1     Running   0          23s
+pod/nginx-d-9d6cbcc65-gpb7l   1/1     Running   0          23s
+pod/nginx-d-9d6cbcc65-h8l7h   1/1     Running   0          4h12m
+pod/nginx-d-9d6cbcc65-l7279   1/1     Running   0          23s
+pod/nginx-d-9d6cbcc65-pbscn   1/1     Running   0          3h50m
+pod/nginx-d-9d6cbcc65-r2lhk   1/1     Running   0          4h12m
+pod/nginx-d-9d6cbcc65-rkrvd   1/1     Running   0          23s
+
+NAME                                DESIRED   CURRENT   READY   AGE
+replicaset.apps/nginx-d-9d6cbcc65   10        10        10      4h12m
+```
+
+
+## Servicios
+
+
