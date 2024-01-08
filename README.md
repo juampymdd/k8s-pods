@@ -948,4 +948,60 @@ replicaset.apps/nginx-d-9d6cbcc65   10        10        10      4h12m
 
 ## Servicios
 
+Los servicios son objetos que nos permiten exponer los pods de manera interna o externa. Los servicios son la forma de comunicarnos con los pods. Este tipo de objeto se encuentra entre el cliente y el pod.
+
+> Los servicios son objetos de tipo ```service``` y son los encargados de exponer los pods.
+
+>Los ```deployments``` no tienen una ```ip fija```, no tienen un nombre ```dns fijo``` y no tienen tampoco un ```puerto fijo```. Y en el momento que se cae un ```pod``` y el ```replicaSet``` crea uno nuevo, este le **asigna una nueva ip** por lo que manejar toda esa estructura de manera directa es imposible sin un ```service```.
+
+### Propiedades que ofrecen los servicios
+
+- ```IP fija```: Los servicios nos permiten tener una ip fija para poder comunicarnos con los pods.
+- ```DNS fijo```: Los servicios nos permiten tener un nombre dns fijo para poder comunicarnos con los pods.
+- ```Puerto fijo```: Los servicios nos permiten tener un puerto fijo para poder comunicarnos con los pods.
+- ```Balanceo de carga```: Los servicios nos permiten tener un balanceo de carga para poder comunicarnos con los pods.
+- ```Descubrimiento de servicios```: Los servicios nos permiten tener un descubrimiento de servicios para poder comunicarnos con los pods.
+
+### Tipos de servicios
+
+- ```ClusterIP```: Los servicios de tipo ```ClusterIP``` nos permiten **exponer los pods de manera interna**, es decir, **solo dentro del cluster**. Este tipo de servicio es el que se utiliza por defecto.
+- ```NodePort```: Los servicios de tipo ```NodePort``` nos permiten **exponer los pods de manera externa**, es decir, **desde fuera del cluster**. Este tipo de servicio es el que se utiliza para poder acceder a los pods desde el exterior.
+- ```LoadBalancer```: Los servicios de tipo ```LoadBalancer``` nos permiten exponer los pods de manera externa, al igual que el ```NodePort```, pero sirve para conectarse a los diferentes servicios que existen en el cloud. Como por ejemplo aws, azure, gcp, etc.
+
+### Como se define un ```Service```?
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: <nombre_service>
+spec:
+  type: <tipo_service>
+  selector:
+    <nombre_etiqueta>: <valor_etiqueta>
+  ports:
+  - protocol: TCP
+    port: <puerto>
+    targetPort: <puerto>
+```
+> El ```selector``` es el que va a permitir que el servicio sepa a que pods tiene que apuntar.
+
+### Crear un servicio de manera imperativa
+
+```bash
+# Crear un servicio de tipo ClusterIP
+kubectl expose deployment <nombre_deployment> --port=<puerto> --target-port=<puerto>
+
+# Ejemplo
+
+# Creo un deployment
+kubectl create deployment apache1 --image=httpd
+deployment.apps/apaceh1 created  
+
+kubectl expose deployment apache --port=80 --type=NodePort
+service/apache exposed  
+
+
+
+
 
