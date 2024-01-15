@@ -996,12 +996,289 @@ kubectl expose deployment <nombre_deployment> --port=<puerto> --target-port=<pue
 
 # Creo un deployment
 kubectl create deployment apache1 --image=httpd
-deployment.apps/apaceh1 created  
+deployment.apps/apache1 created  
 
-kubectl expose deployment apache --port=80 --type=NodePort
+kubectl expose deployment apache1 --port=80 --type=NodePort
 service/apache exposed  
+```
 
+> Cuando escalo los deployments, los servicios se actualizan automaticamente.
 
+### Servicio de tipo LoadBalancer
 
+```bash
+# Crear un servicio de tipo LoadBalancer
+kubectl expose deployment <nombre_deployment> --port=<puerto> --target-port=<puerto> --type=LoadBalancer
 
+# Ejemplo
 
+# Creo un deployment
+kubectl create deployment apache1 --image=httpd
+deployment.apps/apache1 created
+
+# Creo un servicio de tipo LoadBalancer
+kubectl expose deployment apache1 --port=80 --target-port=80 --type=LoadBalancer
+service/apache1 exposed
+```
+
+## Ejemplo con REDIS y REDIS_CLI
+
+1. ```REDIS_CLI``` ➡️ ```ClusterIp``` ➡️ ```REDIS```
+
+```bash
+# Creo el deployment de redis
+kubectl create deployment redis-master --image=redis
+> deployment.apps/redis-master created
+
+# Creo el cliente
+kubectl create deployment redis-cli --image=redis
+> deployment.apps/redis-cli created 
+
+# Creo el servicio de redis
+kubectl expose deploy redis-master --port=6379 --type=ClusterIP
+> service/redis-master exposed 
+
+# Listo los pods
+kubectl get pods
+
+NAME                           READY   STATUS    RESTARTS   AGE
+redis-cli-6cfcfc5bdf-zl6g5     1/1     Running   0          10m
+redis-master-777f848bf-hxn9q   1/1     Running   0          11m
+
+# Me conecto al pod cliente
+kubectl exec -it  redis-cli-6cfcfc5bdf-zl6g5 -- bash
+
+# Me conecto al servicio de master
+redis-cli -h redis-master
+>
+
+# Creo una llave
+set nombre "Juan"
+>
+
+# Obtengo el valor de la llave
+get nombre
+> "Juan"
+
+# Salgo del cliente
+exit
+
+# Me conecto al pod master
+kubectl exec -it  redis-master-777f848bf-hxn9q -- bash
+
+# Me conecto al servicio de master
+redis-cli # Se conecta al cliente en modo local
+>
+
+# Obtengo el valor de la llave
+get nombre
+> "Juan"
+
+# De esta manera compruebo que el servicio de redis esta funcionando correctamente
+```
+
+### Servicios de forma declarativa
+#### ejemplo de web
+
+```bash
+# me muevo a la carpeta de servicios
+cd servicios
+```
+
+#### deploy_web.yaml
+
+```yaml
+apiVersion: apps/v1 
+kind: Deployment
+metadata:
+  name: web-d
+spec:
+  selector:   #permite seleccionar un conjunto de objetos que cumplan las condicione
+    matchLabels:
+      app: web
+  replicas: 2 # indica al controlador que ejecute 2 pods
+  template:   # Plantilla que define los containers
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: apache
+        image: juampymdd/web
+        ports:
+        - containerPort: 80
+```
+
+#### service_web.yaml
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-svc
+  labels:
+     app: web
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    nodePort: 80 #puerto de acceso desde el exterior
+    protocol: TCP
+  selector:
+     app: web #selecciona los pods que tengan la etiqueta app=web
+```
+
+### Endpoints
+
+En Kubernetes, un ```endpoint``` se refiere a un punto de acceso o destino para la comunicación con un servicio.
+
+#### obtener endpoints
+
+```bash
+# Obtener endpoints
+kubectl get endpoints
+```
+
+#### Describo el servicio
+
+```bash
+# Describo el servicio
+kubectl describe service web-svc
+
+Name:                     web-svc                                                                                                                         
+Namespace:                default                                                                                                                         
+Labels:                   app=web                                                                                                                         
+Annotations:              <none>
+Selector:                 app=web
+Type:                     NodePort
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.109.197.163
+IPs:                      10.109.197.163
+LoadBalancer Ingress:     localhost
+Port:                     <unset>  80/TCP
+TargetPort:               80/TCP
+NodePort:                 <unset>  30002/TCP
+Endpoints:                10.1.0.90:80,10.1.0.91:80 # Muestra los endpoints
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
+```
+
+#### Describo el endpoint
+
+```bash
+# tambien puedo describir el endpoint
+kubectl describe endpoints web-svc
+
+Name:         web-svc
+Namespace:    default
+Labels:       app=web             
+Annotations:  endpoints.kubernetes.io/last-change-trigger-time: 2024-01-08T21:08:36Z
+Subsets:
+  Addresses:          10.1.0.90,10.1.0.91
+  NotReadyAddresses:  <none>
+  Ports:
+    Name     Port  Protocol
+    ----     ----  --------
+    <unset>  80    TCP
+
+Events:  <none>
+```
+
+#### Describo en un yaml o json
+
+```bash
+# tambien puedo describir el endpoint en un yaml o json
+kubectl get endpoints web-svc -o yaml
+```
+```yaml
+apiVersion: v1
+kind: Endpoints                 
+metadata:                       
+  annotations:
+    endpoints.kubernetes.io/last-change-trigger-time: "2024-01-08T21:08:36Z"
+  creationTimestamp: "2024-01-08T21:08:30Z"
+  labels:
+    app: web
+  name: web-svc
+  namespace: default
+  resourceVersion: "464205"
+  uid: 1eb0c46c-9135-44a9-bebd-33a697d4a917
+subsets:
+- addresses: # Muestra los endpoints
+  - ip: 10.1.0.90
+    nodeName: docker-desktop
+    targetRef:
+      kind: Pod
+      name: web-d-6c88c75bf4-c2x49
+      namespace: default
+      uid: 8b433a00-7ae4-4bf1-8516-81009b6baef5
+  - ip: 10.1.0.91
+    nodeName: docker-desktop
+    targetRef:
+      kind: Pod
+      name: web-d-6c88c75bf4-8zg45
+      namespace: default
+      uid: cbb9bbef-35dc-4953-9861-b16dddf95469
+  ports:
+  - port: 80
+    protocol: TCP
+```
+#### Variables de entorno del servicio en los pods
+
+```bash
+# Creo el deployment de manera imperativa
+kubectl create deployment web1 --image=nginx --replicas=10
+
+# Creo el servicio de manera imperativa
+kubectl expose deployment web1 --port=80 --type=NodePort
+
+# Obtengo los pods
+kubectl get pods
+NAME                     READY   STATUS    RESTARTS   AGE 
+web1-9c9f5cdb-8qpbf      1/1     Running   0          6m48s
+web1-9c9f5cdb-ccgbl      1/1     Running   0          6m48s
+web1-9c9f5cdb-l2mbq      1/1     Running   0          6m48s
+web1-9c9f5cdb-pjn7g      1/1     Running   0          6m48s
+web1-9c9f5cdb-qt2jx      1/1     Running   0          6m48s
+web1-9c9f5cdb-smpmb      1/1     Running   0          6m48s
+web1-9c9f5cdb-v5qlt      1/1     Running   0          6m48s
+web1-9c9f5cdb-wdn8b      1/1     Running   0          6m48s
+web1-9c9f5cdb-xmd6v      1/1     Running   0          6m48s
+web1-9c9f5cdb-xthk9      1/1     Running   0          6m48s
+
+# Me conecto a un pod
+kubectl exec -it web1-9c9f5cdb-xmd6v -- bash
+
+# Obtengo las variables de entorno
+env
+
+# Muestra lo siguiente
+
+KUBERNETES_SERVICE_PORT_HTTPS=443     
+KUBERNETES_SERVICE_PORT=443                       
+HOSTNAME=web1-9c9f5cdb-xmd6v
+WEB_SVC_SERVICE_HOST=10.109.197.163
+WEB_SVC_PORT_80_TCP=tcp://10.109.197.163:80
+PWD=/
+WEB_SVC_PORT=tcp://10.109.197.163:80
+PKG_RELEASE=1~bookworm
+HOME=/root
+KUBERNETES_PORT_443_TCP=tcp://10.96.0.1:443
+WEB_SVC_PORT_80_TCP_PORT=80
+WEB_SVC_PORT_80_TCP_ADDR=10.109.197.163
+NJS_VERSION=0.8.2
+TERM=xterm
+SHLVL=1
+KUBERNETES_PORT_443_TCP_PROTO=tcp
+KUBERNETES_PORT_443_TCP_ADDR=10.96.0.1
+WEB_SVC_SERVICE_PORT=80
+KUBERNETES_SERVICE_HOST=10.96.0.1
+KUBERNETES_PORT=tcp://10.96.0.1:443
+KUBERNETES_PORT_443_TCP_PORT=443
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+NGINX_VERSION=1.25.3
+WEB_SVC_PORT_80_TCP_PROTO=tcp
+_=/usr/bin/env
+```
