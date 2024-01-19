@@ -736,11 +736,11 @@ kubectl get pod tomcat4 -o 'jsonpath={.metadata.annotations}'
 
 ```
 
-# Deployments
+## Deployments
 
 El deployment es un componente que va a orquestar el despliegue de los pods, es decir, va a ser el encargado de crear los pods, actualizarlos, eliminarlos. Manejando las replicas, las recuperaciones ante catastrofes, escalar, configurar recursos, etc.
 
-## Workloads y controllers
+### Workloads y controllers
 
 - Workloads: El workload se utiliza para poder correr contenedores en Kubernetes y se encargan de correr los procesos.
 Nuestro workload mas básico son los ```pods``` pero estos, no tienen caracteristicas que necesitamos en un cluster como por ejemplo la cantidad de replicas, el escalamiento, la recuperacion ante catastrofes, la capacidad de hacer updates y rollbacks de manera sencilla. Para poder tener estas caracteristicas en nuestro cluster necesitamos tener otros objetos.
@@ -758,13 +758,13 @@ Nuestro workload mas básico son los ```pods``` pero estos, no tienen caracteris
 
 > Los pods no escalan, no se recuperan ante caidas, y ademas cuando quiero actualizar la aplicación o hacer un rollback no puedo hacerlo de manera sencilla. Por lo que necesito un objeto que me permita hacer todo esto, y ese objeto es el ```deployment``` por lo que no se trabaja de forma directa con ```pods```sino que utilizaremos directamente ```deploymets```.
 
-## Que es un ```Deployment```?
+### Que es un ```Deployment```?
 
 Un ```deployment``` es un objeto que nos permite definir como se van a ejecutar los pods, es decir, nos permite definir la cantidad de replicas, la estrategia de actualizacion, la recuperacion ante catastrofes, etc.
 
 > Los ```deployments``` son objetos de tipo ```workload``` y son los encargados de crear los pods, actualizarlos, eliminarlos, etc.
 
-## Como creo un ```Deployment``` de modo imperativo?
+### Como creo un ```Deployment``` de modo imperativo?
 
 ```bash
 kubectl create deployment <nombre_deployment> --image=<imagen>
@@ -773,7 +773,7 @@ kubectl create deployment <nombre_deployment> --image=<imagen>
 kubectl create deployment apache --image=httpd
 ```
 
-## Como se define un ```Deployment```?
+### Como se define un ```Deployment```?
 
 ```yaml
 apiVersion: apps/v1
@@ -801,7 +801,7 @@ spec: # estado ideal de mi deployment
 > Cuando yo creo un deployment, el deployment va a crear un ```replicaset``` y el ```replicaset``` va a crear los pods.
 
 
-## Como se ejecuta un ```Deployment```?
+### Como se ejecuta un ```Deployment```?
 
 ```yaml
 # deploy_nginx.yaml
@@ -844,7 +844,7 @@ cd deployments
 kubectl apply -f deploy_nginx.yaml
 ```
 
-## Como se listan los ```Deployments```?
+### Como se listan los ```Deployments```?
 
 ```bash
 # Para ver los deployments
@@ -1282,3 +1282,565 @@ NGINX_VERSION=1.25.3
 WEB_SVC_PORT_80_TCP_PROTO=tcp
 _=/usr/bin/env
 ```
+
+## Ejemplo PHP + REDIS
+
+### 1. Creo el redis master
+```yaml
+# redis-master.yaml
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: redis-master
+  labels:
+    app: redis
+spec:
+  selector:
+    matchLabels:
+      app: redis
+      role: master
+      tier: backend
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: master
+        tier: backend
+    spec:
+      containers:
+      - name: master
+        image: redis # or just image: redis
+        ports:
+        - containerPort: 6379
+```
+
+```bash
+# Creo el deployment
+kubectl apply -f redis-master.yaml
+
+kubectl get all
+
+NAME                               READY   STATUS    RESTARTS   AGE                                  
+pod/redis-master-5f49bfcd7-492fv   1/1     Running   0          19s
+
+NAME                           READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/redis-master   1/1     1            1           19s
+
+NAME                                     DESIRED   CURRENT   READY   AGE
+replicaset.apps/redis-master-5f49bfcd7   1         1         1       19s
+```
+### 2. Creo el servicio de redis master
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-master-svc
+  labels:
+    app: redis
+    role: master
+    tier: backend
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    app: redis
+    role: master
+    tier: backend
+```
+
+```bash
+# Creo el servicio
+kubectl apply -f redis-master-service.yaml
+
+kubectl get all
+
+NAME                               READY   STATUS    RESTARTS   AGE                                       
+pod/redis-master-5f49bfcd7-492fv   1/1     Running   0          19h
+
+NAME                       TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+service/redis-master-svc   ClusterIP   10.103.106.75   <none>        6379/TCP   8s
+
+NAME                           READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/redis-master   1/1     1            1           19h
+
+NAME                                     DESIRED   CURRENT   READY   AGE
+replicaset.apps/redis-master-5f49bfcd7   1         1         1       19h
+
+# Describe el servicio
+kubectl describe svc redis-master-svc
+
+Name: redis-master-svc
+Namespace: default
+Labels: app=redis
+role=master
+tier=backend
+Annotations:       <none>
+Selector:          app=redis,role=master,tier=backend
+Type:              ClusterIP
+IP Family Policy:  SingleStack
+IP Families:       IPv4
+IP:                10.103.106.75
+IPs:               10.103.106.75
+Port:              <unset>  6379/TCP
+TargetPort:        6379/TCP
+Endpoints:         10.1.0.132:6379
+Session Affinity:  None
+Events:            <none>
+
+# Ingresa al pod
+kubectl exec -it redis-master-5f49bfcd7-492fv -- bash
+
+```
+### 3. Creo el redis slave
+```yaml
+# redis-slave.yaml
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: redis-slave
+  labels:
+    app: redis
+spec:
+  selector:
+    matchLabels:
+      app: redis
+      role: slave
+      tier: backend
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: slave
+        tier: backend
+    spec:
+      containers:
+      - name: slave
+        image: gcr.io/google_samples/gb-redisslave
+        env:
+        - name: GET_HOSTS_FROM
+          value: dns
+```
+
+```bash
+# Creo el deployment
+kubectl apply -f redis-slave.yaml
+
+
+# Obtengo los todos los recursos
+kubectl get all -l role=slave
+
+NAME                               READY   STATUS    RESTARTS   AGE
+pod/redis-slave-68d96d6b9b-5zt2z   1/1     Running   0          44m                                       
+pod/redis-slave-68d96d6b9b-ll5gs   1/1     Running   0          44m
+
+NAME                  TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+service/redis-slave   ClusterIP   10.106.162.155   <none>        6379/TCP   42m
+
+NAME                                     DESIRED   CURRENT   READY   AGE
+replicaset.apps/redis-slave-68d96d6b9b   2         2         2       44m
+
+```	
+
+### 4. Creo el servicio de redis slave
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-slave
+  labels:
+    app: redis
+    role: slave
+    tier: backend
+spec:
+  type: ClusterIP # default
+  ports:
+  - port: 6379
+  selector:
+    app: redis
+    role: slave
+    tier: backend
+
+```
+
+```bash
+# Creo el servicio
+kubectl apply -f redis-slave-service.yaml
+
+# Describo el servicio
+kubectl describe svc redis-slave
+--------------------------------------------------------------
+Name:              redis-slave       
+Namespace:         default                        
+Labels:            app=redis                           
+role=slave
+tier=backend
+Annotations:       <none>
+Selector:          app=redis,role=slave,tier=backend
+Type:              ClusterIP
+IP Family Policy:  SingleStack
+IP Families:       IPv4
+IP:                10.106.162.155
+IPs:               10.106.162.155
+Port:              <unset>  6379/TCP
+TargetPort:        6379/TCP
+Endpoints:         10.1.0.135:6379,10.1.0.136:6379
+Session Affinity:  None
+Events:            <none>
+
+```
+
+## 5. Creo el servicio de redis frontend
+```yaml
+# frontend.yaml
+
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: guestbook
+spec:
+  selector:
+    matchLabels:
+      app: guestbook
+      tier: frontend
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: guestbook
+        tier: frontend
+    spec:
+      containers:
+      - name: php-redis
+        image: gcr.io/google-samples/gb-frontend@sha256:e5233a1e2a6dc9c4ae1d1b754e3a3f62ecdc1da81b31422aff4e7390a0c6e534
+        env:
+        - name: GET_HOSTS_FROM
+          value: dns
+```
+
+```bash
+# Creo el deployment
+kubectl apply -f frontend.yaml
+```
+
+### 6. Creo el servicio de redis frontend
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  labels:
+    app: guestbook
+    tier: frontend
+spec:  
+  type: NodePort 
+  #type: LoadBalancer
+  ports:
+  - port: 80
+  selector:
+    app: guestbook
+    tier: frontend
+```
+  
+```bash
+# Creo el servicio
+kubectl apply -f frontend-service.yaml
+```
+
+## Namespaces
+
+Los namespaces son objetos que nos permiten organizar los recursos de Kubernetes. Los namespaces nos permiten crear diferentes grupos de recursos y separarlos entre si. Por ejemplo, podemos tener un namespace para desarrollo, otro para testing y otro para producción.
+
+Es una división lógica del cluster de kubernetes y nos permite separar los recursos en diferentes zonas.
+
+```bash
+kubectl get namespace
+
+NAME              STATUS   AGE
+default           Active   14d # namespace por defecto
+kube-node-lease   Active   14d # namespace que se crea de forma automatica y se usa para el manejo de los nodos
+kube-public       Active   14d # namespace que se crea de forma automatica y se puede ser accedido por cualquier usuario y se debe usar para recursos que deben ser accesibles de forma publica
+kube-system       Active   14d # namespace que contiene todos los objetos que se crean por defecto en el cluster
+
+# Obtengo los pods del namespace kube-system
+kubectl get pods --namespace kube-system # Forma larga
+kubectl get pods -n kube-system # Forma corta
+
+NAME                                     READY   STATUS    RESTARTS       AGE                   
+coredns-5dd5756b68-mmvf4                 1/1     Running   7 (45h ago)    14d                   
+coredns-5dd5756b68-z5tmk                 1/1     Running   7 (45h ago)    14d                   
+etcd-docker-desktop                      1/1     Running   7 (45h ago)    14d
+kube-apiserver-docker-desktop            1/1     Running   7 (45h ago)    14d
+kube-controller-manager-docker-desktop   1/1     Running   7 (45h ago)    14d
+kube-proxy-j7h7s                         1/1     Running   7 (45h ago)    14d
+kube-scheduler-docker-desktop            1/1     Running   7 (45h ago)    14d
+storage-provisioner                      1/1     Running   14 (45h ago)   14d
+vpnkit-controller                        1/1     Running   7 (45h ago)    14d
+
+# Describir el namespace
+kubectl describe namespace kube-system
+
+Name:         kube-system # Nombre del namespace
+Labels:       kubernetes.io/metadata.name=kube-system # Etiquetas del namespace
+Annotations:  <none>                                      # Anotaciones del namespace
+Status:       Active # Estado del namespace
+
+No resource quota. # Cuotas de recursos (cpu, memoria, etc) [No hay recursos asignados en este caso]
+
+No LimitRange resource. # Limites de recursos (cpu, memoria, etc) [No hay limites definidos en este caso]
+```
+
+### Crear un namespace (imperativa)
+
+```bash
+# Crear un namespace
+kubectl create namespace <nombre_namespace>
+
+# Ejemplo
+kubectl create namespace n1
+namespace/n1 created
+
+# Obtengo los namespaces
+kubectl get namespace
+
+NAME              STATUS   AGE
+default           Active   14d
+kube-node-lease   Active   14d
+kube-public       Active   14d
+kube-system       Active   14d
+n1                Active   17s # Se creo el namespace n1
+```
+
+### Crear un namespace (declarativa)
+
+```bash
+# Me muevo a la carpeta namespaces
+cd namespaces
+```
+
+```yaml
+# namespace.yaml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: <nombre_namespace>
+  labels:
+    <nombre_etiqueta>: <valor_etiqueta>
+---
+# Ejemplo
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev1
+  labels:
+    tipo: desarrollo
+```
+
+```bash
+# Creo el namespace
+kubectl apply -f namespace.yaml
+namespace/dev1 created  
+
+# Obtengo los namespaces
+kubectl get namespace
+                                    
+NAME              STATUS   AGE                       
+default           Active   14d                       
+dev1              Active   14s  # Se creo el namespace dev1
+kube-node-lease   Active   14d
+kube-public       Active   14d
+kube-system       Active   14d
+n1                Active   6m20s
+
+kubectl describe namespace dev1
+
+Name:         dev1                    
+Labels:       kubernetes.io/metadata.name=dev1                            
+              tipo=desarrollo                                                                                          
+Annotations:  <none>
+Status:       Active
+
+No resource quota.
+
+No LimitRange resource.
+```
+
+### Borrar un namespace
+
+```bash
+# Borrar un namespace
+kubectl delete namespace <nombre_namespace>
+
+# Ejemplo
+kubectl delete namespace n1
+namespace "n1" deleted
+
+# Obtengo el namespaces
+kubectl get namespace n1
+Error from server (NotFound): namespaces "n1" not found # El namespace n1 ya no existe
+```
+
+### Ejemplo con elastic search
+
+
+
+```yaml
+# deploy_elastic.yaml
+apiVersion: apps/v1 # i se Usa apps/v1beta2 para versiones anteriores a 1.9.0
+kind: Deployment
+metadata:
+  name: elastic
+  labels:
+    tipo: "desarrollo"
+spec:
+  selector:   #permite seleccionar un conjunto de objetos que cumplan las condicione
+    matchLabels:
+      app: elastic
+  replicas: 2 # indica al controlador que ejecute 2 pods
+  strategy:
+     type: RollingUpdate
+  minReadySeconds: 2
+  template:   # Plantilla que define los containers
+    metadata:
+      labels:
+        app: elastic
+    spec:
+      containers:
+      - name: elastic
+        image: elasticsearch:7.6.0
+        ports:
+        - containerPort: 9200
+```
+
+```bash
+# Creo el deployment
+kubectl apply -f deploy_elastic.yaml --namespace dev1
+
+# Obtengo los pods en el namespace dev1 ya que si no especifico el namespace me muestra los pods del namespace default
+kubectl get pods --namespace dev1
+
+NAME                       READY   STATUS    RESTARTS      AGE
+elastic-7b8bd46989-8bm5s   1/1     Running   2 (20s ago)   83s
+elastic-7b8bd46989-v2xv2   1/1     Running   2 (20s ago)   83s
+
+# Tambien puedo hacer un describe de los pods
+kubectl describe pods --namespace dev1
+
+Name:             elastic-7b8bd46989-8bm5s       
+Namespace:        dev1
+Priority: 0
+Service Account:  default
+Node:             docker-desktop/192.168.65.3
+Start Time:       Thu, 18 Jan 2024 12:54:14 -0300
+Labels:           app=elastic
+                  pod-template-hash=7b8bd46989
+Annotations:      <none>
+Status:           Running
+IP:               10.1.0.157
+IPs:
+  IP:           10.1.0.157
+Controlled By:  ReplicaSet/elastic-7b8bd46989
+Containers:
+  elastic:
+    Container ID:   docker://1f6c0e4964820d6c13fa2ab4a57424b3c16b410472a100d6e517b6ac51ea46e4
+    Image:          elasticsearch:7.6.0
+    Image ID:       docker-pullable://elasticsearch@sha256:578266a8f2de6e1a6896c487dd45cfc901a82ddf50be13bb7c56f97ecd693f77
+    Port:           9200/TCP
+    Host Port:      0/TCP
+    State:          Waiting
+      Reason:       CrashLoopBackOff
+    Last State:     Terminated
+      Reason:       Error
+      Exit Code:    78
+      Started:      Fri, 19 Jan 2024 09:17:52 -0300
+      Finished:     Fri, 19 Jan 2024 09:18:02 -0300
+    Ready:          False
+    Restart Count:  236
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-4mshv (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             False
+  ContainersReady   False
+  PodScheduled      True
+Volumes:
+  kube-api-access-4mshv:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+QoS Class:                   BestEffort
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason   Age                     From     Message
+  ----     ------   ----                    ----     -------
+  Warning  BackOff  2m10s (x5458 over 20h)  kubelet  Back-off restarting failed container elastic in pod elastic-7b8bd46989-8bm5s_dev1(746bd3fb-deb6-4501-a026-0104676b79ae)
+
+
+Name:             elastic-7b8bd46989-v2xv2
+Namespace:        dev1
+Priority:         0
+Service Account:  default
+Node:             docker-desktop/192.168.65.3
+Start Time:       Thu, 18 Jan 2024 12:54:14 -0300
+Labels:           app=elastic
+                  pod-template-hash=7b8bd46989
+Annotations:      <none>
+Status:           Running
+IP:               10.1.0.156
+IPs:
+  IP:           10.1.0.156
+Controlled By:  ReplicaSet/elastic-7b8bd46989
+Containers:
+  elastic:
+    Container ID:   docker://eda2fe6d0f85e652842a016065420e5e3504455380d8b2904d9243bd80219cd3
+    Image:          elasticsearch:7.6.0
+    Image ID:       docker-pullable://elasticsearch@sha256:578266a8f2de6e1a6896c487dd45cfc901a82ddf50be13bb7c56f97ecd693f77
+    Port:           9200/TCP
+    Host Port:      0/TCP
+    State:          Waiting
+      Reason:       CrashLoopBackOff
+    Last State:     Terminated
+      Reason:       Error
+      Exit Code:    78
+      Started:      Fri, 19 Jan 2024 09:18:25 -0300
+      Finished:     Fri, 19 Jan 2024 09:18:36 -0300
+    Ready:          False
+    Restart Count:  237
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-jrxxc (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             False
+  ContainersReady   False
+  PodScheduled      True
+Volumes:
+  kube-api-access-jrxxc:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+QoS Class:                   BestEffort
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason   Age                     From     Message
+  ----     ------   ----                    ----     -------
+  Warning  BackOff  2m11s (x5468 over 20h)  kubelet  Back-off restarting failed container elastic in pod elastic-7b8bd46989-v2xv2_dev1(209bb9c7-9e94-496a-b442-61d9f86f5ea4)
+```
+

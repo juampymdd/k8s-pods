@@ -67,3 +67,4 @@ kubectl get pods
 NAME    READY   STATUS    RESTARTS   AGE
 nginx   1/1     Running   0          1s
 ```
+

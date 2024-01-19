@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: slave
-        image: gcr.io/google_samples/gb-redisslave
+        image: gcr.io/google_samples/gb-redisslave:v3
         env:
         - name: GET_HOSTS_FROM
           value: dns
