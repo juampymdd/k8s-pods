@@ -1844,3 +1844,79 @@ Events:
   Warning  BackOff  2m11s (x5468 over 20h)  kubelet  Back-off restarting failed container elastic in pod elastic-7b8bd46989-v2xv2_dev1(209bb9c7-9e94-496a-b442-61d9f86f5ea4)
 ```
 
+### Setear namespace por defecto
+
+```bash
+# Setear namespace por defecto
+kubectl config set-context --current --namespace=<nombre_namespace>
+
+# Ejemplo
+kubectl config set-context --current --namespace=dev1
+
+Context "docker-desktop" modified.  
+
+# Obtengo los pods
+kubectl get pods
+
+NAME                       READY   STATUS    RESTARTS   AGE                                                       
+elastic-5cd7d7b9f5-4nx5n   1/1     Running   0          40s                                                       
+elastic-5cd7d7b9f5-pgn5v   1/1     Running   0          78s
+```
+
+### Limitar recursos de un namespace 
+
+#### Nuevo objeto ```LimitRange```
+
+```yaml
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: recursos
+spec:
+  limits:
+  - default:
+      memory: 512Mi
+      cpu: 1
+    defaultRequest:
+      memory: 256Mi
+      cpu: 0.5
+    max:
+      memory: 1Gi
+      cpu: 4
+    min:
+      memory: 128Mi
+      cpu: 0.5
+    type: Container
+```
+
+```bash
+# Creo el namespace
+kubectl create namespace n1  
+namespace/n1 created   
+
+# Creo el objeto LimitRange
+kubectl apply -f limites.yaml --namespace n1
+
+# Describo el namespace para ver los limites
+
+kubectl describe namespace n1
+
+Name:         n1
+Labels:       kubernetes.io/metadata.name=n1
+Annotations:  <none>
+Status:       Active
+
+No resource quota.
+
+Resource Limits
+ Type       Resource  Min    Max  Default Request  Default Limit  Max Limit/Request Ratio
+ ----       --------  ---    ---  ---------------  -------------  -----------------------
+ Container  cpu       500m   4    500m             1              -
+ Container  memory    128Mi  1Gi  256Mi            512Mi          -
+
+
+# Creo un pod de nginx
+
+kubectl run nginx --image=nginx -n n1
+pod/nginx created
+
